@@ -1,0 +1,58 @@
+const std = @import("std");
+
+const main = @import("main");
+const graphics = main.graphics;
+const draw = graphics.draw;
+const Texture = graphics.Texture;
+const network = main.network;
+const Vec2f = main.vec.Vec2f;
+
+const gui = @import("../gui.zig");
+const GuiWindow = gui.GuiWindow;
+const GuiComponent = gui.GuiComponent;
+
+pub var window = GuiWindow{
+	.relativePosition = .{
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
+	},
+	.contentSize = Vec2f{192, 128},
+	.isHud = false,
+	.showTitleBar = false,
+	.hasBackground = false,
+	.hideIfMouseIsGrabbed = false,
+};
+
+pub fn render(currentFrame: *graphics.vulkan.Frame) void {
+	var y: f32 = 0;
+	if (main.game.world != null) {
+		if (main.server.world != null) {
+			const userList = main.server.getUserList(main.stackAllocator);
+			defer main.stackAllocator.free(userList);
+			draw.print(currentFrame, "Players Connected: {}", .{userList.len}, 0, y, 8);
+			y += 8;
+		}
+		const sent = network.Connection.packetsSent.load(.monotonic);
+		const resent = network.Connection.packetsResent.load(.monotonic);
+		const loss = @as(f64, @floatFromInt(resent))/@as(f64, @floatFromInt(sent))*100;
+		draw.print(currentFrame, "Packet loss: {d:.1}% ({}/{})", .{loss, resent, sent}, 0, y, 8);
+		y += 8;
+		draw.print(currentFrame, "Internal message overhead: {}kiB", .{network.Connection.internalMessageOverhead.load(.monotonic) >> 10}, 0, y, 8);
+		y += 8;
+		draw.print(currentFrame, "Internal header overhead: {}kiB", .{network.Connection.internalHeaderOverhead.load(.monotonic) >> 10}, 0, y, 8);
+		y += 8;
+		draw.print(currentFrame, "External header overhead: {}kiB", .{network.Connection.externalHeaderOverhead.load(.monotonic) >> 10}, 0, y, 8);
+		y += 8;
+		inline for (@typeInfo(network.protocols).@"struct".decl_names) |decl| {
+			if (@TypeOf(@field(network.protocols, decl)) == type) {
+				const id = @field(network.protocols, decl).id;
+				draw.print(currentFrame, "{s}: received {}kiB sent {}kiB", .{decl, network.protocols.bytesReceived[id].load(.monotonic) >> 10, network.protocols.bytesSent[id].load(.monotonic) >> 10}, 0, y, 8);
+				y += 8;
+			}
+		}
+	}
+	if (window.contentSize[1] != y) {
+		window.contentSize[1] = y;
+		window.updateWindowPosition();
+	}
+}

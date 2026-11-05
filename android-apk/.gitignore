@@ -1,0 +1,17 @@
+# Build artifacts. The APK pipeline stages these into app/src/main/ on every
+# run, so they are copies of ../assets and ../zig-out rather than sources.
+.build/
+app/src/main/assets/
+app/src/main/jniLibs/
+
+# APKs are build output — but cctes-beta.apk is deliberately tracked so people
+# can install it without building. Everything else stays out.
+*.apk
+!cctes-beta.apk
+*.apk.idsig
+!cctes-beta.apk.idsig
+
+# Signing material. A keystore is a private key: committing it lets anyone sign
+# an APK that Android will accept as a legitimate update to this app.
+*.keystore
+*.jks

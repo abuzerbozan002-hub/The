@@ -1,0 +1,96 @@
+#version 460
+
+#include "frame_uniforms.glsl"
+
+layout(location = 0) out vec3 textureCoords;
+layout(location = 1) flat out vec3 light;
+
+#ifdef OPEN_GL
+layout(location = 0) uniform vec3 ambientLight;
+layout(location = 1) uniform vec3 positionOffset;
+layout(location = 2) uniform mat4 billboardMatrix;
+#else
+layout(push_constant, std430) uniform _ {
+	mat4 billboardMatrix;
+	vec3 positionOffset;
+	vec3 ambientLight;
+};
+#endif
+
+struct ParticleData {
+	vec3 pos;
+	float rotation;
+	float currentFrame;
+	uint light;
+	uint type;
+};
+layout(std430, binding = 13) restrict readonly buffer _particleData
+{
+	ParticleData particleData[];
+};
+
+struct ParticleTypeData {
+	float frameCount;
+	float startFrame;
+	float size;
+};
+layout(std430, binding = 14) restrict readonly buffer _particleTypeData
+{
+	ParticleTypeData particleTypeData[];
+};
+
+const vec2 uvPositions[4] = vec2[4]
+(
+	vec2(0.0f, 0.0f),
+	vec2(1.0f, 0.0f),
+	vec2(0.0f, 1.0f),
+	vec2(1.0f, 1.0f)
+);
+
+const vec3 facePositions[4] = vec3[4]
+(
+	vec3(-0.5f, -0.5f, 0.0f),
+	vec3(-0.5f, 0.5f, 0.0f),
+	vec3(0.5f, -0.5f, 0.0f),
+	vec3(0.5f, 0.5f, 0.0f)
+);
+
+vec3 square(vec3 x) {
+	return x*x;
+}
+
+void main() {
+	int particleID = gl_VertexIndex >> 2;
+	int vertexID = gl_VertexIndex & 3;
+	ParticleData particle = particleData[particleID];
+	ParticleTypeData particleType = particleTypeData[particle.type];
+
+	uint fullLight = particle.light;
+	vec3 sunLight = vec3(
+		fullLight >> 25 & 31u,
+		fullLight >> 20 & 31u,
+		fullLight >> 15 & 31u
+	);
+	vec3 blockLight = vec3(
+		fullLight >> 10 & 31u,
+		fullLight >> 5 & 31u,
+		fullLight >> 0 & 31u
+	);
+	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31.0;
+
+	float rotation = particle.rotation;
+	vec3 faceVertPos = facePositions[vertexID];
+	float sn = sin(rotation);
+	float cs = cos(rotation);
+	vec3 vertexRotationPos = vec3(
+		faceVertPos.x*cs - faceVertPos.y*sn,
+		faceVertPos.x*sn + faceVertPos.y*cs,
+		0
+	);
+
+	vec3 vertexPos = (billboardMatrix*vec4(particleType.size*vertexRotationPos, 1)).xyz + particle.pos - positionOffset;
+	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
+
+	float textureIndex = floor(mod(particle.currentFrame, particleType.frameCount) + particleType.startFrame);
+	textureCoords = vec3(uvPositions[vertexID], textureIndex);
+}

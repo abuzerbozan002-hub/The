@@ -1,0 +1,86 @@
+Cctes Beta - Android APK
+========================
+
+Dosya : Cctes-Beta.apk  (~18 MB, libc++_shared.so dahil)
+Paket : cctes.beta
+Sürüm : 0.5.0-beta
+ABI   : arm64-v8a (yalnızca 64-bit ARM cihazlar)
+Min   : Android 9 (API 28)
+Hedef : Android 14 (API 34)
+
+DOĞRULAMA
+---------
+sha256: 50014035cfc4133d0770b09cc8f3ea1a2094688fec7522eafe012c913f5958bd
+
+Bu APK'nın imzası üç şemayla da geçerlidir (v1 + v2 + v3), yani hem eski
+hem yeni Android sürümleri kabul eder:
+  apksigner verify --min-sdk-version 21 Cctes-Beta.apk
+    -> v1: true, v2: true, v3: true
+
+BU SÜRÜMDE DÜZELTİLEN ÇÖKME
+---------------------------
+Önceki APK açılışta çöküyordu. Tombstone'da sebep netti:
+  renderer.init+92  SIGSEGV (stack pointer is not in a rw map)
+Oyunun başlatma kodu tek bir fonksiyonda ~2,25 MB yığın istiyor, dünya
+üretimi ise 4,5 MB'a kadar çıkıyor; Android'in oyun thread'i için ayırdığı
+varsayılan yığın ise ~1 MB. İlk yazmada yığın taşıyordu.
+Düzeltme: oyun thread'inin yığını 16 MB'a çıkarıldı (motorun kendi worker
+thread'leri zaten 16 MB kullanıyordu, yalnızca başlatma thread'i eksikti).
+
+YENİ: DOKUNMATİK KONTROLLER
+---------------------------
+  - Sol yarı     : hareket çubuğu (parmağını bastığın yerde belirir)
+  - Sağ yarı     : sürükle -> etrafına bak
+  - Sağ alt      : ^ zıpla, X blok kır, O blok koy, S koş, C çömel
+  - Sol üst      : F uç, I envanter, = menü
+  - Üst orta     : < > hotbar slot değiştir
+Menülerde (envanter vb.) dokunma normal fare tıklaması gibi çalışır.
+Fiziksel oyun kolu / fare takarsan onlar da çalışır.
+
+GEREKSİNİMLER
+-------------
+- 64-bit ARM (arm64-v8a) işlemci. Eski 32-bit cihazlarda çalışmaz.
+- Android 9 veya üzeri.
+- OpenGL ES 3.2 desteği. Bu sürücü gereksinimi manifest'te zorunlu
+  olarak bildirilmiştir; desteklemeyen cihazda Google Play "uyumlu
+  değil" der, elle kurulumda ise sistem reddeder.
+
+KURULUM (telefon)
+-----------------
+1. Cctes-Beta.apk dosyasını telefona kopyala (USB, Drive, Telegram vb.).
+2. Telefonda dosyaya dokun -> "Bilinmeyen kaynaklara izin ver" çıkarsa onayla.
+3. Kur -> uygulama adı: Cctes Beta
+
+KURULUM (adb ile)
+-----------------
+adb install -r Cctes-Beta.apk
+
+"PAKET AYRIŞTIRILAMADI" HATASI ALIRSAN
+--------------------------------------
+Bu hata Android'in APK'yı hiç kabul etmediği anlamına gelir. Sırayla:
+1. Telefonun Android sürümünü kontrol et: Ayarlar > Telefon hakkında.
+   Android 9'un altındaysa bu APK kurulamaz (minSdk 28).
+2. Dosyayı eksiksiz indirdiğini doğrula. Bilgisayarda:
+     sha256sum Cctes-Beta.apk
+   Yukarıdaki sha256 ile aynı olmalı. Farklıysa indirme bozulmuştur,
+   yeniden indir.
+3. Eski sürüm kuruluysa kaldır (Ayarlar > Uygulamalar > Cctes Beta >
+   Kaldır), sonra yenisini kur. Eski APK farklı bir anahtarla
+   imzalanmışsa Android güncellemeyi reddeder.
+4. Dosyayı USB/Drive yerine Telegram üzerinden "dosya olarak"
+   göndermeyi dene; bazı aktarım yolları APK'yı bozar.
+
+NOTLAR
+------
+- Kendi debug anahtarıyla imzalandı; Play Store'a yüklemek için kendi
+  anahtarınla yeniden imzalaman gerekir.
+- Müzik dosyaları APK'ya konmadı (101 MB). Oyun müziksiz de açılır.
+- İlk açılışta asset'ler (2902 dosya, ~28 MB) cihazda bir kez açılır,
+  bu yüzden ilk başlatma biraz uzun sürebilir.
+- Cihazda test EDİLMEDİ - bu ortamda arm64 Android çalıştırılamıyor.
+  Sorun çıkarsa logcat'e bak:
+  adb logcat | grep -E "CctesMain|CctesShim|CctesGame|CctesAssets"
+
+Kaynak / derleme dosyaları:
+  /workspaces/src/cubyz/android-apk/
+  (build_apk.sh ile yeniden derlenir)
