@@ -65,6 +65,10 @@ int cubyz_touch_handle_motion(AInputEvent* event);
 // Keeps the layout in sync after a window resize.
 void cubyz_touch_set_window_size(int w, int h);
 
+// Re-reads the surface size so the layout can never drift away from the size the
+// engine actually renders into.
+void cubyz_touch_sync_window_size(void);
+
 // Refreshes touch-derived input once per frame (called from glfwPollEvents).
 void cubyz_touch_update(void);
 

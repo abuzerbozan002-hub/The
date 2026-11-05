@@ -29,6 +29,7 @@ extern fn cubyz_touch_button(index: c_int, out: *ButtonLayout) c_int;
 extern fn cubyz_touch_move_pad(outOriginX: *f32, outOriginY: *f32, outOffsetX: *f32, outOffsetY: *f32) c_int;
 extern fn cubyz_touch_in_game() c_int;
 extern fn cubyz_touch_window_size(width: *c_int, height: *c_int) void;
+extern fn cubyz_touch_sync_window_size() void;
 
 const buttonCount = 11;
 
@@ -46,6 +47,7 @@ pub fn render(currentFrame: *graphics.vulkan.Frame) void {
 
 	var width: c_int = 0;
 	var height: c_int = 0;
+	cubyz_touch_sync_window_size();
 	cubyz_touch_window_size(&width, &height);
 	const h: f32 = @floatFromInt(height);
 

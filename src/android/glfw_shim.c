@@ -786,6 +786,24 @@ void cubyz_touch_window_size(int* width, int* height) {
 	if (height) *height = g_windowH ? g_windowH : app_height();
 }
 
+// The engine's framebufferSize callback reports the surface size it actually
+// uses. That callback is the single source of truth for the layout: it also
+// covers the resize events the game only learns about through its own poll loop
+// (APP_CMD_WINDOW_RESIZED is not always delivered), so the overlay can never
+// drift away from what the engine renders into.
+void cubyz_touch_sync_window_size(void) {
+	if (g_app && g_app->window) {
+		const int w = ANativeWindow_getWidth(g_app->window);
+		const int h = ANativeWindow_getHeight(g_app->window);
+		if (w > 0 && h > 0) {
+			g_windowW = w;
+			g_windowH = h;
+		}
+	}
+	if (g_windowW <= 0) g_windowW = app_width();
+	if (g_windowH <= 0) g_windowH = app_height();
+}
+
 // Entry point used by android_main.c to forward motion events. Returns 1 if the
 // event was consumed by the touch controls.
 int cubyz_touch_handle_motion(AInputEvent* event) {

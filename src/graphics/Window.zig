@@ -776,6 +776,23 @@ pub fn init() void { // MARK: init()
 
 	c.glfwMakeContextCurrent(window);
 
+	// On Android there is no resize event between window creation and the first
+	// frame, so `width`/`height` would stay at their 1280x720 defaults while the
+	// surface is actually the device's full size. That desync makes the world
+	// framebuffer, the viewport and the GUI scale base all disagree with the real
+	// screen. Read the real size here. Note this only *assigns*; the full update
+	// (viewport/framebuffers) is done later by clientMain, once the renderer that
+	// updateViewport tears down and rebuilds actually exists.
+	if (comptime main.isAndroid) {
+		var realWidth: c_int = 0;
+		var realHeight: c_int = 0;
+		c.glfwGetFramebufferSize(window, &realWidth, &realHeight);
+		if (realWidth > 0 and realHeight > 0) {
+			width = @intCast(realWidth);
+			height = @intCast(realHeight);
+		}
+	}
+
 	if (c.gladLoadGL(c.glfwGetProcAddress) == 0) {
 		@panic("Failed to load OpenGL functions from GLAD");
 	}

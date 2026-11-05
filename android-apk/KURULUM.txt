@@ -10,12 +10,22 @@ Hedef : Android 14 (API 34)
 
 DOĞRULAMA
 ---------
-sha256: 50014035cfc4133d0770b09cc8f3ea1a2094688fec7522eafe012c913f5958bd
+sha256: 8f4f6eac8f064743c838819c105ea7eb34fe65ca34c34c5aadf95b8a4afa7b3e
 
 Bu APK'nın imzası üç şemayla da geçerlidir (v1 + v2 + v3), yani hem eski
 hem yeni Android sürümleri kabul eder:
   apksigner verify --min-sdk-version 21 Cctes-Beta.apk
     -> v1: true, v2: true, v3: true
+
+BU SÜRÜMDE DÜZELTİLEN ÇÖZÜNÜRLÜK HATASI
+--------------------------------------
+Önceki sürümde oyun, pencerenin boyutunu hiçbir zaman cihazdan almıyordu;
+1280x720 sabit varsayımıyla kalıyordu. Ama arayüz ölçeği (yazı ve pencere
+boyutları) gerçek ekran genişliğinden hesaplanıyordu. Sonuç:
+  - Dünya, ekranın yalnızca küçük bir köşesine çiziliyordu.
+  - Menü yazıları taşıp bozuk/üst üste görünüyordu.
+Düzeltme: pencere oluşturulduktan sonra gerçek çözünürlük okunup motora
+veriliyor; dünya viewport'u ve arayüz ölçeği artık aynı boyutu kullanıyor.
 
 BU SÜRÜMDE DÜZELTİLEN ÇÖKME
 ---------------------------
