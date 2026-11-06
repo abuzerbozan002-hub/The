@@ -6,7 +6,9 @@
 #include <android/log.h>
 #include <android/input.h>
 #include <android/keycodes.h>
+#include <android/native_activity.h>
 #include <android/native_window.h>
+#include <jni.h>
 
 #include <limits.h>
 #include <stdio.h>
@@ -159,8 +161,12 @@ static int32_t handle_input(struct android_app* app, AInputEvent* event) {
 			cubyz_shim_key(key, kc, action, mods);
 
 			if (action != GLFW_RELEASE && !(meta & AMETA_CTRL_ON)) {
+				// The public NDK header exposes no Unicode accessor for key
+				// events, so the character is reconstructed from keycode+shift.
+				// BACK is never text: the engine maps it to Escape, which is how
+				// the on-screen keyboard is dismissed.
 				int uc = keycode_to_char(kc, meta);
-				if (uc > 0)
+				if (uc > 0 && kc != AKEYCODE_BACK)
 					cubyz_shim_char((unsigned int)uc);
 			}
 		}
@@ -168,6 +174,37 @@ static int32_t handle_input(struct android_app* app, AInputEvent* event) {
 	}
 
 	return 0;
+}
+
+// ------------------------------------------------------------------ soft keyboard
+//
+// A NativeActivity has no EditText, so the system never raises the IME by
+// itself: the game must ask whenever a text field gains focus. Forwards to
+// MainActivity.setSoftKeyboard, which drives the InputMethodManager on the UI
+// thread. Every JNI handle is released immediately — they are only needed for
+// the duration of the call.
+void cubyz_android_set_soft_keyboard(int show) {
+	if (!g_app || !g_app->activity || !g_app->activity->clazz)
+		return;
+	JavaVM* vm = g_app->activity->vm;
+	if (!vm)
+		return;
+	JNIEnv* env = NULL;
+	if ((*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_6) != JNI_OK) {
+		// The game loop runs on the glue's own thread, which the JVM does not
+		// know about yet; attach it so GetEnv has something to return.
+		if ((*vm)->AttachCurrentThread(vm, &env, NULL) != JNI_OK)
+			return;
+	}
+	jclass cls = (*env)->GetObjectClass(env, g_app->activity->clazz);
+	if (!cls)
+		return;
+	jmethodID mid = (*env)->GetMethodID(env, cls, "setSoftKeyboard", "(Z)V");
+	if (mid)
+		(*env)->CallVoidMethod(env, g_app->activity->clazz, mid, show ? JNI_TRUE : JNI_FALSE);
+	if ((*env)->ExceptionCheck(env))
+		(*env)->ExceptionClear(env);
+	(*env)->DeleteLocalRef(env, cls);
 }
 
 // ------------------------------------------------------------------- pumping

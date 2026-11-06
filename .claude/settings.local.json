@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gcc -O1 -o compile_all compile_all.c -lEGL -lGLESv2)",
+      "Bash(EGL_PLATFORM=surfaceless ./compile_all)"
+    ]
+  }
+}

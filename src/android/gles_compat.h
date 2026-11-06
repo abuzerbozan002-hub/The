@@ -91,8 +91,13 @@ static inline void cubyz_glBufferStorage(GLenum target, GLsizeiptr size, const v
 
 // GLES has no glClipControl: its window-space origin is always lower-left and
 // depth is always [0,1]. Cubyz asks for upper-left + zero-to-one. The
-// zero-to-one depth half already matches; the origin flip is applied in the
-// UI/screen-space shaders instead. No-op here.
+// zero-to-one depth half already matches.
+//
+// The origin half cannot be done here -- it has to change how clip space maps to
+// the window, which only the shaders control. Negating gl_Position.y in every
+// GL_ES vertex shader reproduces the desktop result exactly; that flip is
+// injected as a macro by Shader.addShader in graphics/pipelines.zig, with the
+// verification notes. No-op here.
 //   call site: Window.zig init()
 static inline void cubyz_glClipControl(GLenum origin, GLenum depth) {
 	(void)origin;

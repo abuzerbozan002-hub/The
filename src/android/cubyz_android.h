@@ -79,6 +79,11 @@ const char* cubyz_android_cwd_path(void);
 // Pump the Android looper once (drains lifecycle + input queues).
 void cubyz_android_pump_events(void);
 
+// Raise (show != 0) or dismiss the on-screen keyboard. Called when a text field
+// gains or loses focus; a NativeActivity has no EditText, so the IME has to be
+// requested explicitly. Forwarded to MainActivity.setSoftKeyboard.
+void cubyz_android_set_soft_keyboard(int show);
+
 // Input injection API called by the glue after translating AInputEvent.
 void cubyz_shim_key(int key, int scancode, int action, int mods);
 void cubyz_shim_char(unsigned int codepoint);

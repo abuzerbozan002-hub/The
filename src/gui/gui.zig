@@ -420,6 +420,11 @@ pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
 		}
 	}
 	selectedTextInput = newSelectedTextInput;
+	if (comptime main.isAndroid) {
+		// The platform has no text widget for the system to key the IME off, so
+		// the keyboard is raised exactly while a field is selected.
+		main.android.setSoftKeyboard(newSelectedTextInput != null);
+	}
 }
 
 pub const text_callbacks = struct {

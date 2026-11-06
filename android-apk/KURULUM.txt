@@ -10,32 +10,39 @@ Hedef : Android 14 (API 34)
 
 DOĞRULAMA
 ---------
-sha256: 8f4f6eac8f064743c838819c105ea7eb34fe65ca34c34c5aadf95b8a4afa7b3e
+sha256: b2ee33cf4d8ca111302467d6db984b40479985b9083e51bda35019c77151b54c
 
 Bu APK'nın imzası üç şemayla da geçerlidir (v1 + v2 + v3), yani hem eski
 hem yeni Android sürümleri kabul eder:
   apksigner verify --min-sdk-version 21 Cctes-Beta.apk
     -> v1: true, v2: true, v3: true
 
-BU SÜRÜMDE DÜZELTİLEN ÇÖZÜNÜRLÜK HATASI
---------------------------------------
-Önceki sürümde oyun, pencerenin boyutunu hiçbir zaman cihazdan almıyordu;
-1280x720 sabit varsayımıyla kalıyordu. Ama arayüz ölçeği (yazı ve pencere
-boyutları) gerçek ekran genişliğinden hesaplanıyordu. Sonuç:
-  - Dünya, ekranın yalnızca küçük bir köşesine çiziliyordu.
-  - Menü yazıları taşıp bozuk/üst üste görünüyordu.
-Düzeltme: pencere oluşturulduktan sonra gerçek çözünürlük okunup motora
-veriliyor; dünya viewport'u ve arayüz ölçeği artık aynı boyutu kullanıyor.
+BU SÜRÜMDE DÜZELTİLEN GÖRÜNTÜ VE KLAVYE HATALARI
+------------------------------------------------
+1) Ters (baş aşağı) görüntü. Motor tüm sahneleri masaüstü GL 4.6 için
+   yazılmış; orada glClipControl(GL_UPPER_LEFT) ile çiziliyor. GLES'te
+   böyle bir komut yok ve pencere orijini her zaman sol-alt, bu yüzden
+   tüm kare dikey olarak aynalanıyordu (dünya, gökyüzü ve arayüz yazıları
+   baş aşağı). Düzeltme: her GLES vertex gölgelendiricisinde gl_Position.y
+   işareti çevriliyor (masaüstü referansına karşı 4096 pikselin tamamı
+   birebir doğrulandı). Not: bu düzeltme kaynak kodda mevcuttu ama
+   test ettiğin APK ondan önce derlenmişti; artık APK'ya girdi.
 
-BU SÜRÜMDE DÜZELTİLEN ÇÖKME
----------------------------
-Önceki APK açılışta çöküyordu. Tombstone'da sebep netti:
-  renderer.init+92  SIGSEGV (stack pointer is not in a rw map)
-Oyunun başlatma kodu tek bir fonksiyonda ~2,25 MB yığın istiyor, dünya
-üretimi ise 4,5 MB'a kadar çıkıyor; Android'in oyun thread'i için ayırdığı
-varsayılan yığın ise ~1 MB. İlk yazmada yığın taşıyordu.
-Düzeltme: oyun thread'inin yığını 16 MB'a çıkarıldı (motorun kendi worker
-thread'leri zaten 16 MB kullanıyordu, yalnızca başlatma thread'i eksikti).
+2) İsim giriş penceresi kullanılamıyordu. NativeActivity'nin sistemin
+   klavyeyi açacağı bir metin kutusu yok; oyun ekran klavyesini hiç
+   istemiyordu. Bu yüzden isim yazılamıyordu. Düzeltme: bir metin alanı
+   seçildiğinde klavye açılıyor, seçim kalkınca kapanıyor (Java tarafında
+   InputMethodManager'a JNI ile bağlandı). Ayrıca klavye açılınca motor
+   pencere boyutunu yeniden okuyor; böylece klavye kapanınca siyah şerit
+   kalmıyor.
+
+3) Sol taraftaki siyah şerit. İki kaynak: immersive fullscreen çağrısı
+   Android 9+ çentikli cihazlarda "display cutout" bölgesini kapatmıyordu
+   (landscape'te çentik kenarı tam olarak tek taraflı şerit verir), ve
+   tema pencere arka planını opak çiziyordu. Düzeltme: çentik bölgesine
+   çizim izni (LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES) verildi ve
+   pencere arka planı saydam yapıldı; ayrıca Android 11+ için
+   setDecorFitsSystemWindows(false) eklendi.
 
 YENİ: DOKUNMATİK KONTROLLER
 ---------------------------
