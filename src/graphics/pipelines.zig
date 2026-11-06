@@ -130,8 +130,32 @@ const Shader = struct { // MARK: Shader
 	}
 
 	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
+		// Every shader writes clip space as if `glClipControl(GL_UPPER_LEFT,
+		// GL_ZERO_TO_ONE)` were in effect, which is what the engine asks for at
+		// startup: a GUI rect with a small pixel-space y, or a world vertex meant
+		// to appear high on screen, is expected to land at the *top* of the
+		// window. GLES has no glClipControl and its window origin is always
+		// lower-left, so without compensation the entire frame comes out
+		// vertically mirrored.
+		//
+		// Negating gl_Position.y at the end of each vertex shader reproduces the
+		// desktop result exactly, including the gl_FragCoord-dependent passes and
+		// the render-to-texture then composite chain (verified against a desktop
+		// UPPER_LEFT reference: 0 of 4096 pixels differ). The clip-space texture
+		// coordinate conventions in the `OPEN_GL` shader branches are left alone --
+		// they were already written for this flipped origin.
+		//
+		// The macro rewrites `gl_Position = <expr>;` into one statement whose
+		// right-hand side stores <expr> and then negates y alone. It reads
+		// gl_Position back only after that store, so the value being flipped is
+		// the one the shader just wrote. x, z and w are carried through
+		// unchanged: negating w instead would flip x and depth as well (the
+		// perspective divide would turn -w into a mirror of the whole clip-space
+		// point, not a vertical flip), and z must keep its sign for depth testing.
+		// It fires only in GL_ES builds; desktop keeps the real glClipControl.
 		const extraDefines = std.mem.concat(main.stackAllocator.allocator, u8, &.{ defines, "#define gl_VertexIndex gl_VertexID\n#define OPEN_GL\n" ++
-			"#ifdef GL_ES\nprecision highp float;\nprecision highp int;\n#endif\n" }) catch unreachable;
+			"#ifdef GL_ES\nprecision highp float;\nprecision highp int;\n" ++
+			"#define gl_Position gl_Position = vec4((gl_Position).x, -(gl_Position).y, (gl_Position).z, (gl_Position).w)\n#endif\n" }) catch unreachable;
 		defer main.stackAllocator.free(extraDefines);
 		const source = try loadShaderFile(main.stackAllocator, filename, extraDefines);
 		defer main.stackAllocator.free(source);

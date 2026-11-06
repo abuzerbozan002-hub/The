@@ -7,6 +7,7 @@ const builtin = @import("builtin");
 extern fn cubyz_android_home_path() [*:0]const u8;
 extern fn cubyz_android_cwd_path() [*:0]const u8;
 extern fn cubyz_android_pump_events() void;
+extern fn cubyz_android_set_soft_keyboard(show: c_int) void;
 
 extern fn __android_log_write(prio: c_int, tag: [*:0]const u8, text: [*:0]const u8) c_int;
 
@@ -18,6 +19,13 @@ pub fn homePath() []const u8 {
 /// The app directory the C side chdir'd into; relative asset paths hang off it.
 pub fn cwdPath() []const u8 {
 	return std.mem.span(cubyz_android_cwd_path());
+}
+
+/// Show or hide the on-screen keyboard. A NativeActivity gives the system no
+/// text widget to key the IME off, so it stays hidden until the game asks for
+/// it; the GUI sets the selected text input as the trigger.
+pub fn setSoftKeyboard(show: bool) void {
+	cubyz_android_set_soft_keyboard(@intFromBool(show));
 }
 
 pub const LogPriority = struct {
